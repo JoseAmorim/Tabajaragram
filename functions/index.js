@@ -1,0 +1,87 @@
+const functions = require('firebase-functions');
+const cors = require('cors')({ origin: true });
+const fs = require('fs');
+const uuid = require('uuid-v4');
+const { Storage } = require('@google-cloud/storage');
+const storage = new Storage({
+    projectId: 'cloneinstagram-bcb0d',
+    keyFilename: 'cloneinstagram-bcb0d.json'
+});
+
+// // Create and Deploy Your First Cloud Functions
+// // https://firebase.google.com/docs/functions/write-firebase-functions
+
+exports.uploadImage = functions.https.onRequest((request, response) => {
+    cors(request, response, () => {
+        try {
+            fs.writeFileSync(
+                '/tmp/imageToSave.jpg',
+                request.body.image,
+                'base64'
+            );
+
+            const bucket = storage.bucket('cloneinstagram-bcb0d.appspot.com');
+            const id = uuid();
+            bucket.upload('/tmp/imageToSave.jpg', {
+                uploadType: 'media',
+                destination: `/posts/${id}.jpg`,
+                metadata: {
+                    metadata: {
+                        contentTyoe: 'image/jpeg',
+                        firebaseStorageDownloadTokens: id,
+                    }
+                }
+            }, (err, file) => {
+                if (err) {
+                    console.log(err);
+                    return response.status(500).json({ error: err });
+                } else {
+                    const fileName = encodeURIComponent(file.name);
+                    const imageUrl = 'https://firebasestorage.googleapis.com/v0/b/'
+                        + bucket.name + '/o/' + fileName + '?alt=media&token=' + id;
+                    return response.status(201).json({ imageUrl });
+                }
+            });
+        } catch (err) {
+            console.log(err)
+            return response.status(500).json({ error: err });
+        }
+    });
+});
+
+exports.uploadAvatar = functions.https.onRequest((request, response) => {
+    cors(request, response, () => {
+        try {
+            fs.writeFileSync(
+                '/tmp/avatarToSave.jpg',
+                request.body.avatar,
+                'base64'
+            );
+
+            const bucket = storage.bucket('cloneinstagram-bcb0d.appspot.com');
+            const id = uuid();
+            bucket.upload('/tmp/imageToSave.jpg', {
+                uploadType: 'media',
+                destination: `/users/${id}.jpg`,
+                metadata: {
+                    metadata: {
+                        contentTyoe: 'image/jpeg',
+                        firebaseStorageDownloadTokens: id,
+                    }
+                }
+            }, (err, file) => {
+                if (err) {
+                    return response.status(500).json({ error: err });
+                } else {
+                    const fileName = encodeURIComponent(file.name);
+                    const imageUrl = 'https://firebasestorage.googleapis.com/v0/b/'
+                        + bucket.name + '/o/' + fileName + '?alt=media&token=' + id;
+                    return response.status(201).json({ imageUrl });
+                }
+            });
+        } catch (err) {
+            console.log(err)
+            return response.status(500).json({ error: err });
+        }
+    });
+});
